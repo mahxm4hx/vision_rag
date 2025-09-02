@@ -8,8 +8,9 @@ import tqdm
 import numpy as np
 import streamlit as st
 import cohere
-from google import genai
+import google.generativeai as genai  # Fixed import
 import fitz # PyMuPDF
+
 
 # --- Streamlit App Configuration ---
 st.set_page_config(layout="wide", page_title="Trial Vision RAG Of Environ")
@@ -38,7 +39,8 @@ except Exception as e:
     st.error("Please check your Cohere API key in the code.")
 
 try:
-    genai_client = genai.Client(api_key=GOOGLE_API_KEY)
+    genai.configure(api_key=GOOGLE_API_KEY)  # Fixed initialization
+    genai_client = genai.GenerativeModel('gemini-2.0-flash-exp')  # Updated model
     st.sidebar.success("Gemini Client Initialized!")
 except Exception as e:
     st.sidebar.error(f"Gemini Initialization Failed: {e}")
@@ -325,18 +327,15 @@ def answer(question: str, img_path: str, gemini_client) -> str:
         return f"Answering prerequisites not met ({', '.join(missing)} missing or invalid)."
     try:
         img = PIL.Image.open(img_path)
-        prompt = [f"""Answer the question based on the following image. Be as elaborate as possible giving extra relevant information.
+        prompt = f"""Answer the question based on the following image. Be as elaborate as possible giving extra relevant information.
 Don't use markdown formatting in the response.
 Please provide enough context for your answer.
 
-Question: {question}""", img]
+Question: {question}"""
 
-        # Use a currently supported Gemini model
-        response = gemini_client.models.generate_content(
-            model="gemini-2.5-flash",  # updated from deprecated preview
-            contents=prompt
-        )
-
+        # Use the updated Gemini API
+        response = gemini_client.generate_content([prompt, img])
+        
         llm_answer = response.text
         print("LLM Answer:", llm_answer)  # Keep for debugging
         return llm_answer
